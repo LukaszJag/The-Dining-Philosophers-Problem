@@ -1,70 +1,82 @@
+import java.util.concurrent.locks.Lock;
 import java.util.Random;
-import java.util.concurrent.ThreadLocalRandom;
 
 public class Philosopher implements Runnable {
-    public int number;
-    public Fork leftFork;
-    public Fork rightFork;
-    public Thread t;
-    public int howManyTimesHeEats;
+    private final int number;
+    private final Lock leftFork;
+    private final Lock rightFork;
+    private int howManyTimesHeEats;
     public boolean isHasLeftFork;
     public boolean isHasRightFork;
+    private static final Random random = new Random();
 
-
-    Philosopher(int num, Fork left, Fork right) {
-        howManyTimesHeEats = 0;
-        isHasLeftFork = false;
-        isHasRightFork = false;
-        number = num;
-        leftFork = left;
-        rightFork = right;
-        t = new Thread(this, String.valueOf(num));
-        //System.out.println("Philosopher " + num + " is ready...");
+    Philosopher(int number, Lock leftFork, Lock rightFork) {
+        this.number = number;
+        this.leftFork = leftFork;
+        this.rightFork = rightFork;
+        this.howManyTimesHeEats = 0;
+        this.isHasLeftFork = false;
+        this.isHasRightFork = false;
     }
 
-        void eat(){
-            try
-            {
-                int sleepTime = ThreadLocalRandom.current().nextInt(0, 1000);
-                Thread.sleep(sleepTime);
-            }
-            catch (Exception e)
-            {
-                e.printStackTrace(System.out);
-            }
-        }
-
-    public void run() {
-
-        Random random = new Random();
-        int randomInt = random.nextInt(600, 2000);
+    void eat() {
         try {
-            Thread.sleep(randomInt);
+            int sleepTime = random.nextInt(1000);
+            Thread.sleep(sleepTime);
+            howManyTimesHeEats++;
         } catch (InterruptedException e) {
-            throw new RuntimeException(e);
+            Thread.currentThread().interrupt();
         }
+    }
 
-        while(true) {
-            //System.out.println("Philosopher " + number + " is thinking...");
-
-            leftFork.grab();
-            isHasLeftFork = true;
-            //System.out.println("Philosopher " + number + " grabs left fork " + leftFork.number);
-
-            rightFork.grab();
-            isHasRightFork = true;
-            //System.out.println("Philosopher " + number + " grabs right fork " + rightFork.number);
-
-            //System.out.println("Philosopher " + number + " is eating...");
-            howManyTimesHeEats = howManyTimesHeEats + 1;
-            eat();
-            leftFork.release();
-            isHasLeftFork = false;
-            //System.out.println("Philosopher " + number + " has put down the left fork " + leftFork.number);
-            rightFork.release();
-            isHasRightFork = false;
-            //System.out.println("Philosopher " + number + " has put down the right fork " + rightFork.number);
-
+    @Override
+    public void run() {
+        while (true) {
+            think();
+            if (number % 2 == 0) {
+                leftFork.lock();
+                isHasLeftFork = true;
+                rightFork.lock();
+                isHasRightFork = true;
+            } else {
+                rightFork.lock();
+                isHasRightFork = true;
+                leftFork.lock();
+                isHasLeftFork = true;
+            }
+            try {
+                eat();
+            } finally {
+                leftFork.unlock();
+                isHasLeftFork = false;
+                rightFork.unlock();
+                isHasRightFork = false;
+            }
         }
+    }
+
+    private void think() {
+        try {
+            int sleepTime = random.nextInt((2000 - 600) + 1) + 600;  // random number between 600 to 2000
+            Thread.sleep(sleepTime);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    public int getNumber() {
+        return number;
+    }
+
+    public int getHowManyTimesHeEats() {
+        return howManyTimesHeEats;
+    }
+
+    public boolean isHasLeftFork() {
+        return isHasLeftFork;
+    }
+
+    public boolean isHasRightFork() {
+        return isHasRightFork;
     }
 }
